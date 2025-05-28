@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Drug Suppliers</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/api/healthcare/">🏥 Hospital Management</a>
+            <span class="navbar-text text-white">Drug Suppliers</span>
+            <div class="ms-auto">
+                <a href="/api/healthcare/dashboard/" class="btn btn-outline-light me-2">Dashboard</a>
+                <a href="/api/healthcare/logout/" class="btn btn-outline-light">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h2 class="mb-4">Drug Suppliers</h2>
+        <a href="#" class="btn btn-success mb-3">Add Drug Supplier</a>
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Example row, replace with dynamic data -->
+                <tr>
+                    <td>1</td>
+                    <td>Supplier Inc.</td>
+                    <td>contact@supplier.com</td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-warning">Edit</a>
+                        <a href="#" class="btn btn-sm btn-danger">Delete</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <footer class="text-center mt-4">
+            <small>&copy; 2025 Hospital Management System</small>
+        </footer>
+    </div>
+</body>
+</html>

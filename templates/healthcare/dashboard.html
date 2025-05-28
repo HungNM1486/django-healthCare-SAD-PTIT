@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/api/healthcare/">🏥 Hospital Management</a>
+            <span class="navbar-text text-white">Dashboard</span>
+            <div class="ms-auto">
+                <a href="/api/healthcare/logout/" class="btn btn-outline-light">Logout</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container">
+        <h2 class="mb-4">Hospital Dashboard</h2>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Doctors</h5>
+                        <a href="/api/healthcare/doctors/" class="btn btn-outline-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Patients</h5>
+                        <a href="/api/healthcare/patients/" class="btn btn-outline-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Nurses</h5>
+                        <a href="/api/healthcare/nurses/" class="btn btn-outline-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Pharmacists</h5>
+                        <a href="/api/healthcare/pharmacists/" class="btn btn-outline-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Lab Technicians</h5>
+                        <a href="/api/healthcare/lab-technicians/" class="btn btn-outline-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title">Drug Suppliers</h5>
+                        <a href="/api/healthcare/drug-suppliers/" class="btn btn-outline-primary">Manage</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="text-center mt-4">
+            <small>&copy; 2025 Hospital Management System</small>
+        </footer>
+    </div>
+</body>
+</html>
