@@ -16,9 +16,7 @@ from .views import (
     appointment_view, medications_view, patient_record_view,
     appointment_create, appointment_update, appointment_delete, appointment_status,
     medication_create, medication_update, medication_delete,
-    patient_record_create, patient_record_update, patient_record_delete,
-    doctor_create, doctor_update, doctor_delete,
-    patient_create, patient_update, patient_delete, patient_detail
+    patient_record_create, patient_record_update, patient_record_delete
 )
 
 # Create router and register ViewSets
@@ -46,14 +44,7 @@ urlpatterns = [
     
     # Entity management pages
     path('doctors/', doctors, name='doctors'),
-    path('doctors/create/', doctor_create, name='doctor_create'),
-    path('doctors/update/<int:doctor_id>/', doctor_update, name='doctor_update'),
-    path('doctors/delete/<int:doctor_id>/', doctor_delete, name='doctor_delete'),
     path('patients/', patients, name='patients'),
-    path('patients/create/', patient_create, name='patient_create'),
-    path('patients/update/<int:patient_id>/', patient_update, name='patient_update'),
-    path('patients/delete/<int:patient_id>/', patient_delete, name='patient_delete'),
-    path('patients/detail/<int:patient_id>/', patient_detail, name='patient_detail'),
     path('nurses/', nurses, name='nurses'),
     path('pharmacists/', pharmacists, name='pharmacists'),
     path('lab-technicians/', lab_technicians, name='lab_technicians'),
@@ -77,9 +68,6 @@ urlpatterns = [
     path('patient-record/create/', patient_record_create, name='patient_record_create'),
     path('patient-record/update/<int:record_id>/', patient_record_update, name='patient_record_update'),
     path('patient-record/delete/<int:record_id>/', patient_record_delete, name='patient_record_delete'),
-    
-    # For DRF ViewSets handling
-    # The ViewSets handle the CRUD operations for /api/healthcare/prescriptions/ and /api/healthcare/lab-results/
     
     # Authentication endpoints
     path('auth/register/', RegisterView.as_view(), name='register'),

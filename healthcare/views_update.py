@@ -1,4 +1,3 @@
-import os
 from django.shortcuts import render, redirect, get_object_or_404
 from rest_framework import status, viewsets, filters
 from rest_framework.response import Response
@@ -50,46 +49,12 @@ def dashboard(request):
 
 @login_required(login_url='/api/healthcare/')
 def doctors(request):
-    """View to display doctors with search and filter functionality"""
     doctors_list = Doctor.objects.all()
-    
-    # Handle search query
-    search = request.GET.get('search')
-    if search:
-        doctors_list = doctors_list.filter(
-            Q(name__icontains=search) | 
-            Q(specialization__icontains=search) |
-            Q(email__icontains=search)
-        )
-    
-    # Handle specialization filter
-    specialization = request.GET.get('specialization')
-    if specialization and specialization != 'All Specializations':
-        doctors_list = doctors_list.filter(specialization=specialization)
-    
-    # Get distinct specializations for filter dropdown
-    specializations = Doctor.objects.values_list('specialization', flat=True).distinct()
-    
-    context = {
-        'doctors': doctors_list,
-        'specializations': specializations
-    }
-    return render(request, 'healthcare/doctors.html', context)
+    return render(request, 'healthcare/doctors.html', {'doctors': doctors_list})
 
 @login_required(login_url='/api/healthcare/')
 def patients(request):
-    """View to display patients with search functionality"""
     patients_list = Patient.objects.all()
-    
-    # Handle search query
-    search = request.GET.get('search')
-    if search:
-        patients_list = patients_list.filter(
-            Q(name__icontains=search) | 
-            Q(email__icontains=search) |
-            Q(phone__icontains=search)
-        )
-    
     return render(request, 'healthcare/patients.html', {'patients': patients_list})
 
 @login_required(login_url='/api/healthcare/')
@@ -118,30 +83,6 @@ def appointment_view(request):
     doctors_list = Doctor.objects.all()
     patients_list = Patient.objects.all()
     appointments_list = Appointment.objects.all().order_by('-appointment_date', '-appointment_time')
-    
-    # Handle search query
-    search = request.GET.get('search')
-    if search:
-        appointments_list = appointments_list.filter(
-            Q(patient__name__icontains=search) | 
-            Q(doctor__name__icontains=search) |
-            Q(appointment_type__icontains=search)
-        )
-    
-    # Handle status filter
-    status = request.GET.get('status')
-    if status and status != 'All Status':
-        appointments_list = appointments_list.filter(status=status)
-    
-    # Handle date filter
-    date = request.GET.get('date')
-    if date:
-        appointments_list = appointments_list.filter(appointment_date=date)
-    
-    # Handle patient filter
-    patient_id = request.GET.get('patient_id')
-    if patient_id:
-        appointments_list = appointments_list.filter(patient_id=patient_id)
     
     context = {
         'doctors': doctors_list,
@@ -228,32 +169,8 @@ def appointment_status(request, appointment_id):
 # MEDICATION VIEWS
 @login_required(login_url='/api/healthcare/')
 def medications_view(request):
-    medications_list = Medication.objects.all().select_related('supplier')
+    medications_list = Medication.objects.all()
     suppliers_list = DrugSupplier.objects.all()
-    
-    # Handle search query
-    search = request.GET.get('search')
-    if search:
-        medications_list = medications_list.filter(
-            Q(name__icontains=search) | 
-            Q(generic_name__icontains=search) |
-            Q(category__icontains=search)
-        )
-    
-    # Handle category filter
-    category = request.GET.get('category')
-    if category:
-        medications_list = medications_list.filter(category=category)
-    
-    # Handle stock status filter
-    status = request.GET.get('status')
-    if status:
-        if status == 'Low Stock':
-            medications_list = medications_list.filter(stock_quantity__lte='reorder_level')
-        elif status == 'Out of Stock':
-            medications_list = medications_list.filter(stock_quantity__lte=0)
-        elif status == 'In Stock':
-            medications_list = medications_list.filter(stock_quantity__gt='reorder_level')
     
     context = {
         'medications': medications_list,
@@ -275,10 +192,8 @@ def medication_create(request):
         supplier_id = request.POST.get('supplier')
         
         try:
-            supplier = None
-            if supplier_id:
-                supplier = DrugSupplier.objects.get(id=supplier_id)
-                
+            supplier = DrugSupplier.objects.get(id=supplier_id) if supplier_id else None
+            
             medication = Medication.objects.create(
                 name=name,
                 generic_name=generic_name,
@@ -290,7 +205,7 @@ def medication_create(request):
                 supplier=supplier
             )
             
-            return JsonResponse({'success': True, 'message': 'Medication created successfully!'})
+            return JsonResponse({'success': True, 'message': 'Medication added successfully!'})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
     
@@ -312,11 +227,10 @@ def medication_update(request, medication_id):
         supplier_id = request.POST.get('supplier')
         if supplier_id:
             try:
-                medication.supplier = DrugSupplier.objects.get(id=supplier_id)
+                supplier = DrugSupplier.objects.get(id=supplier_id)
+                medication.supplier = supplier
             except DrugSupplier.DoesNotExist:
-                medication.supplier = None
-        else:
-            medication.supplier = None
+                pass
         
         medication.save()
         return JsonResponse({'success': True, 'message': 'Medication updated successfully!'})
@@ -336,60 +250,35 @@ def medication_delete(request, medication_id):
 # PATIENT RECORD VIEWS
 @login_required(login_url='/api/healthcare/')
 def patient_record_view(request):
-    from django.utils import timezone
-    
-    # Get all doctors for the forms
+    patients_list = Patient.objects.all()
     doctors_list = Doctor.objects.all()
     
-    # Get all medications, lab technicians, and suppliers for the forms
-    medications_list = Medication.objects.all()
-    lab_technicians_list = LabTechnician.objects.all()
-    suppliers_list = DrugSupplier.objects.all()
-    
-    # Get recent patients (last 5 patients with records or created recently)
-    recent_patients = Patient.objects.order_by('-created_at')[:5]
-    
-    current_patient = None
-    patient_records = []
-    patient_appointments = []
-    patient_prescriptions = []
-    patient_lab_results = []
-    
-    # Handle patient selection
+    # If a specific patient is requested
     patient_id = request.GET.get('patient_id')
+    patient = None
+    records = []
+    visits = []
+    prescriptions = []
+    lab_results = []
+    
     if patient_id:
         try:
-            current_patient = Patient.objects.get(id=patient_id)
-            patient_records = PatientRecord.objects.filter(patient=current_patient).order_by('-record_date')
-            patient_appointments = Appointment.objects.filter(patient=current_patient).order_by('-appointment_date')
-            patient_prescriptions = Prescription.objects.filter(patient=current_patient).order_by('-start_date')
-            patient_lab_results = LabResult.objects.filter(patient=current_patient).order_by('-test_date')
+            patient = Patient.objects.get(id=patient_id)
+            records = PatientRecord.objects.filter(patient=patient).order_by('-record_date')
+            visits = Visit.objects.filter(patient=patient).order_by('-visit_date')
+            prescriptions = Prescription.objects.filter(patient=patient).order_by('-created_at')
+            lab_results = LabResult.objects.filter(patient=patient).order_by('-test_date')
         except Patient.DoesNotExist:
             pass
     
-    # Handle search
-    search = request.GET.get('search')
-    if search:
-        searched_patients = Patient.objects.filter(name__icontains=search)
-        if searched_patients.exists():
-            current_patient = searched_patients.first()
-            patient_records = PatientRecord.objects.filter(patient=current_patient).order_by('-record_date')
-            patient_appointments = Appointment.objects.filter(patient=current_patient).order_by('-appointment_date')
-            patient_prescriptions = Prescription.objects.filter(patient=current_patient).order_by('-start_date')
-            patient_lab_results = LabResult.objects.filter(patient=current_patient).order_by('-test_date')
-    
     context = {
+        'patients': patients_list,
         'doctors': doctors_list,
-        'medications': medications_list,
-        'lab_technicians': lab_technicians_list,
-        'suppliers': suppliers_list,
-        'recent_patients': recent_patients,
-        'current_patient': current_patient,
-        'patient_records': patient_records,
-        'patient_appointments': patient_appointments,
-        'patient_prescriptions': patient_prescriptions,
-        'patient_lab_results': patient_lab_results,
-        'today_date': timezone.now()
+        'selected_patient': patient,
+        'medical_records': records,
+        'visits': visits,
+        'prescriptions': prescriptions,
+        'lab_results': lab_results
     }
     
     return render(request, 'healthcare/patient_record.html', context)
@@ -398,30 +287,29 @@ def patient_record_view(request):
 def patient_record_create(request):
     if request.method == 'POST':
         patient_id = request.POST.get('patient')
-        doctor_id = request.POST.get('doctor')
-        record_date = request.POST.get('record_date')
         record_type = request.POST.get('record_type')
         description = request.POST.get('description')
+        record_date = request.POST.get('record_date')
+        doctor_id = request.POST.get('doctor')
+        attachments = request.FILES.get('attachments')
         
         try:
             patient = Patient.objects.get(id=patient_id)
-            doctor = Doctor.objects.get(id=doctor_id)
+            doctor = Doctor.objects.get(id=doctor_id) if doctor_id else None
             
-            record = PatientRecord(
+            record = PatientRecord.objects.create(
                 patient=patient,
-                doctor=doctor,
-                record_date=record_date,
                 record_type=record_type,
-                description=description
+                description=description,
+                record_date=record_date,
+                doctor=doctor
             )
             
-            # Handle file upload if present
-            if 'attachments' in request.FILES:
-                record.attachments = request.FILES['attachments']
+            if attachments:
+                record.attachments = attachments
+                record.save()
             
-            record.save()
-            
-            return JsonResponse({'success': True, 'message': 'Patient record created successfully!'})
+            return JsonResponse({'success': True, 'message': 'Medical record added successfully!'})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
     
@@ -432,26 +320,24 @@ def patient_record_update(request, record_id):
     record = get_object_or_404(PatientRecord, id=record_id)
     
     if request.method == 'POST':
-        record.patient_id = request.POST.get('patient', record.patient_id)
-        record.doctor_id = request.POST.get('doctor', record.doctor_id)
-        record.record_date = request.POST.get('record_date', record.record_date)
         record.record_type = request.POST.get('record_type', record.record_type)
         record.description = request.POST.get('description', record.description)
+        record.record_date = request.POST.get('record_date', record.record_date)
         
-        # Handle file upload if present
-        if 'attachments' in request.FILES:
-            # Delete old file if it exists
-            if record.attachments:
-                try:
-                    old_file_path = record.attachments.path
-                    if os.path.isfile(old_file_path):
-                        os.remove(old_file_path)
-                except:
-                    pass
-            record.attachments = request.FILES['attachments']
+        doctor_id = request.POST.get('doctor')
+        if doctor_id:
+            try:
+                doctor = Doctor.objects.get(id=doctor_id)
+                record.doctor = doctor
+            except Doctor.DoesNotExist:
+                pass
+        
+        attachments = request.FILES.get('attachments')
+        if attachments:
+            record.attachments = attachments
         
         record.save()
-        return JsonResponse({'success': True, 'message': 'Patient record updated successfully!'})
+        return JsonResponse({'success': True, 'message': 'Medical record updated successfully!'})
     
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
@@ -461,10 +347,11 @@ def patient_record_delete(request, record_id):
     
     if request.method == 'POST':
         record.delete()
-        return JsonResponse({'success': True, 'message': 'Patient record deleted successfully!'})
+        return JsonResponse({'success': True, 'message': 'Medical record deleted successfully!'})
     
     return JsonResponse({'success': False, 'message': 'Invalid request method'})
 
+# Other views
 class RegisterView(APIView):    
     permission_classes = [AllowAny]
     
@@ -538,11 +425,15 @@ class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'specialization', 'email']
 
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name', 'email', 'phone']
 
 class NurseViewSet(viewsets.ModelViewSet):
     queryset = Nurse.objects.all()
@@ -569,6 +460,7 @@ class LabTechnicianViewSet(viewsets.ModelViewSet):
     serializer_class = LabTechnicianSerializer
     permission_classes = [IsAuthenticated]
 
+# New API ViewSets for the added models
 class MedicationViewSet(viewsets.ModelViewSet):
     queryset = Medication.objects.all()
     serializer_class = MedicationSerializer
@@ -611,6 +503,8 @@ class PatientRecordViewSet(viewsets.ModelViewSet):
     queryset = PatientRecord.objects.all()
     serializer_class = PatientRecordSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['patient__name', 'record_type', 'description']
     
     @action(detail=False, methods=['get'])
     def by_patient(self, request):
@@ -619,7 +513,7 @@ class PatientRecordViewSet(viewsets.ModelViewSet):
             records = self.queryset.filter(patient_id=patient_id)
             serializer = self.serializer_class(records, many=True)
             return Response(serializer.data)
-        return Response({"error": "Patient ID required"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "Patient ID parameter required"}, status=status.HTTP_400_BAD_REQUEST)
 
 class PrescriptionViewSet(viewsets.ModelViewSet):
     queryset = Prescription.objects.all()
@@ -653,6 +547,10 @@ class DashboardStatsView(APIView):
             'total_pharmacists': Pharmacist.objects.count(),
             'total_lab_technicians': LabTechnician.objects.count(),
             'total_drug_suppliers': DrugSupplier.objects.count(),
+            'total_appointments': Appointment.objects.count(),
+            'total_medications': Medication.objects.count(),
+            'scheduled_appointments': Appointment.objects.filter(status='scheduled').count(),
+            'low_stock_medications': Medication.objects.filter(stock_quantity__lte='reorder_level').count(),
         }
         return Response(stats)
 
@@ -660,211 +558,3 @@ def user_logout(request):
     """Log the user out and redirect to the login page"""
     logout(request)
     return redirect('/api/healthcare/')
-
-@login_required(login_url='/api/healthcare/')
-def doctor_create(request):
-    """Create a new doctor"""
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        specialization = request.POST.get('specialization')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        
-        try:
-            # Check if email already exists
-            if Doctor.objects.filter(email=email).exists():
-                return JsonResponse({'success': False, 'message': 'A doctor with this email already exists.'})
-            
-            doctor = Doctor.objects.create(
-                name=name,
-                specialization=specialization,
-                phone=phone,
-                email=email
-            )
-            
-            return JsonResponse({'success': True, 'message': 'Doctor created successfully!'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required(login_url='/api/healthcare/')
-def doctor_update(request, doctor_id):
-    """Update an existing doctor"""
-    doctor = get_object_or_404(Doctor, id=doctor_id)
-    
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        specialization = request.POST.get('specialization')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        
-        try:
-            # Check if email already exists for another doctor
-            if Doctor.objects.filter(email=email).exclude(id=doctor_id).exists():
-                return JsonResponse({'success': False, 'message': 'Another doctor with this email already exists.'})
-            
-            doctor.name = name
-            doctor.specialization = specialization
-            doctor.phone = phone
-            doctor.email = email
-            doctor.save()
-            
-            return JsonResponse({'success': True, 'message': 'Doctor updated successfully!'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required(login_url='/api/healthcare/')
-def doctor_delete(request, doctor_id):
-    """Delete a doctor"""
-    doctor = get_object_or_404(Doctor, id=doctor_id)
-    
-    if request.method == 'POST':
-        try:
-            # Check if doctor has related appointments
-            appointment_count = Appointment.objects.filter(doctor=doctor).count()
-            if appointment_count > 0:
-                return JsonResponse({
-                    'success': False, 
-                    'message': f'Cannot delete this doctor as they have {appointment_count} appointments.'
-                })
-            
-            # Check if doctor has related patient records
-            record_count = PatientRecord.objects.filter(doctor=doctor).count()
-            if record_count > 0:
-                return JsonResponse({
-                    'success': False, 
-                    'message': f'Cannot delete this doctor as they are associated with {record_count} patient records.'
-                })
-            
-            doctor_name = doctor.name
-            doctor.delete()
-            return JsonResponse({'success': True, 'message': f'Doctor {doctor_name} deleted successfully!'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required(login_url='/api/healthcare/')
-def patient_create(request):
-    """Create a new patient"""
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        date_of_birth = request.POST.get('date_of_birth')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        address = request.POST.get('address')
-        
-        try:
-            # Check if email already exists
-            if Patient.objects.filter(email=email).exists():
-                return JsonResponse({'success': False, 'message': 'A patient with this email already exists.'})
-            
-            patient = Patient.objects.create(
-                name=name,
-                date_of_birth=date_of_birth,
-                phone=phone,
-                email=email,
-                address=address
-            )
-            
-            return JsonResponse({'success': True, 'message': 'Patient created successfully!'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required(login_url='/api/healthcare/')
-def patient_update(request, patient_id):
-    """Update an existing patient"""
-    patient = get_object_or_404(Patient, id=patient_id)
-    
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        date_of_birth = request.POST.get('date_of_birth')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        address = request.POST.get('address')
-        
-        try:
-            # Check if email already exists for another patient
-            if Patient.objects.filter(email=email).exclude(id=patient_id).exists():
-                return JsonResponse({'success': False, 'message': 'Another patient with this email already exists.'})
-            
-            patient.name = name
-            patient.date_of_birth = date_of_birth
-            patient.phone = phone
-            patient.email = email
-            patient.address = address
-            patient.save()
-            
-            return JsonResponse({'success': True, 'message': 'Patient updated successfully!'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required(login_url='/api/healthcare/')
-def patient_delete(request, patient_id):
-    """Delete a patient"""
-    patient = get_object_or_404(Patient, id=patient_id)
-    
-    if request.method == 'POST':
-        try:
-            # Check if patient has related appointments
-            appointment_count = Appointment.objects.filter(patient=patient).count()
-            record_count = PatientRecord.objects.filter(patient=patient).count()
-            prescription_count = Prescription.objects.filter(patient=patient).count()
-            visit_count = Visit.objects.filter(patient=patient).count()
-            lab_count = LabResult.objects.filter(patient=patient).count()
-            
-            total_related = appointment_count + record_count + prescription_count + visit_count + lab_count
-            
-            if total_related > 0:
-                message = f"This patient has {total_related} related records: "
-                details = []
-                if appointment_count > 0:
-                    details.append(f"{appointment_count} appointments")
-                if record_count > 0:
-                    details.append(f"{record_count} medical records")
-                if prescription_count > 0:
-                    details.append(f"{prescription_count} prescriptions")
-                if visit_count > 0:
-                    details.append(f"{visit_count} visits")
-                if lab_count > 0:
-                    details.append(f"{lab_count} lab results")
-                
-                message += ", ".join(details) + ". Are you sure you want to delete this patient?"
-                
-                # If we want to prevent deletion with related records, uncomment this
-                # return JsonResponse({'success': False, 'message': message})
-            
-            patient_name = patient.name
-            patient.delete()
-            return JsonResponse({'success': True, 'message': f'Patient {patient_name} and all related records deleted successfully!'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'message': str(e)})
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})
-
-@login_required(login_url='/api/healthcare/')
-def patient_detail(request, patient_id):
-    """Get patient details"""
-    patient = get_object_or_404(Patient, id=patient_id)
-    
-    if request.method == 'GET':
-        data = {
-            'id': patient.id,
-            'name': patient.name,
-            'date_of_birth': patient.date_of_birth,
-            'age': patient.age,
-            'phone': patient.phone,
-            'email': patient.email,
-            'address': patient.address,
-            'created_at': patient.created_at
-        }
-        return JsonResponse(data)
-    
-    return JsonResponse({'success': False, 'message': 'Invalid request method'})

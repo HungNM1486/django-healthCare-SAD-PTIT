@@ -59,6 +59,8 @@ class LabTechnicianSerializer(serializers.ModelSerializer):
         model = LabTechnician
         fields = '__all__'
 
+# New serializers for additional models
+
 class MedicationSerializer(serializers.ModelSerializer):
     supplier_name = serializers.ReadOnlyField(source='supplier.name')
     stock_status = serializers.ReadOnlyField()
