@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',  # For frontend integration
     'healthcare',
+    'chatbot',  # Your chatbot app
 ]
 
 MIDDLEWARE = [
