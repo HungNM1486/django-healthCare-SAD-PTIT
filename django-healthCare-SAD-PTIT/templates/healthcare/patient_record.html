@@ -1,0 +1,1409 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Records</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .record-box {
+            border-left: 4px solid #0d6efd;
+            margin-bottom: 1rem;
+        }
+        .tab-content {
+            border-left: 1px solid #dee2e6;
+            border-right: 1px solid #dee2e6;
+            border-bottom: 1px solid #dee2e6;
+            padding: 1rem;
+            border-radius: 0 0 0.25rem 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/api/healthcare/">
+                <i class="fas fa-hospital me-2"></i>MediCare Hospital
+            </a>
+            <span class="navbar-text text-white">Patient Records</span>
+            <div class="ms-auto">
+                <a href="/api/healthcare/dashboard/" class="btn btn-outline-light me-2">Dashboard</a>
+                <a href="/api/healthcare/logout/" class="btn btn-outline-light">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-3 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Patient Search</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control" placeholder="Search by name" id="patientSearchQuery">
+                            <button class="btn btn-outline-primary" type="button" id="patientSearchButton">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Filter By</label>
+                            <select class="form-select" id="patientFilterSelect">
+                                <option selected value="">All Patients</option>
+                                <option value="recent">Recent Visits</option>
+                                <option value="inpatient">Inpatients</option>
+                                <option value="critical">Critical</option>
+                            </select>
+                        </div>
+                        <hr>
+                        <h6 class="mb-3">Recent Patients</h6>
+                        <ul class="list-group" id="recentPatientsList">
+                            {% for patient in recent_patients %}
+                            <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if current_patient and current_patient.id == patient.id %}active{% endif %}" 
+                                data-patient-id="{{ patient.id }}">
+                                {{ patient.name }}
+                                <span class="badge {% if current_patient and current_patient.id == patient.id %}bg-light text-dark{% else %}bg-primary{% endif %}">{{ patient.age }}y</span>
+                            </li>
+                            {% empty %}
+                            <li class="list-group-item">No recent patients</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-9">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            {% if current_patient %}
+                            <h5 class="card-title mb-0">Patient Information</h5>
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary" id="editPatientButton" data-id="{{ current_patient.id }}">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary ms-1" id="printPatientButton">
+                                    <i class="fas fa-print me-1"></i>Print
+                                </button>
+                            </div>
+                            {% else %}
+                            <h5 class="card-title mb-0">Patient Information</h5>
+                            <div>
+                                <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addPatientModal">
+                                    <i class="fas fa-plus me-1"></i>New Patient
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if current_patient %}
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 text-center mb-3">
+                                <img src="{% static 'avt.jpg' %}" class="rounded-circle mb-2" alt="Patient Photo" style="width: 100px; height: 100px; object-fit: cover;">
+                                <div class="d-block">
+                                    <span class="badge bg-primary">ID: {{ current_patient.id }}</span>
+                                </div>
+                            </div>
+                            <div class="col-md-9">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="text-muted mb-1">Full Name</label>
+                                        <div class="fw-bold">{{ current_patient.name }}</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="text-muted mb-1">Date of Birth</label>
+                                        <div class="fw-bold">{{ current_patient.date_of_birth|date:"M d, Y" }} ({{ current_patient.age }} years)</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="text-muted mb-1">Email</label>
+                                        <div>{{ current_patient.email }}</div>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="text-muted mb-1">Phone</label>
+                                        <div>{{ current_patient.phone }}</div>
+                                    </div>
+                                    <div class="col-md-12 mb-3">
+                                        <label class="text-muted mb-1">Address</label>
+                                        <div>{{ current_patient.address }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="card-body text-center py-5">
+                        <i class="fas fa-user-circle fa-5x text-muted mb-3"></i>
+                        <h5>No Patient Selected</h5>
+                        <p class="text-muted">Please select a patient from the list or search for a patient</p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                {% if current_patient %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="patientRecordTabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" href="#records" data-bs-toggle="tab">Medical Records</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#appointments" data-bs-toggle="tab">Appointments</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#prescriptions" data-bs-toggle="tab">Prescriptions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="#lab" data-bs-toggle="tab">Lab Results</a>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="records">
+                                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                                    <h6 class="mb-0">Medical Records</h6>
+                                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addRecordModal" data-patient-id="{{ current_patient.id }}">
+                                        <i class="fas fa-plus me-1"></i>Add Record
+                                    </button>
+                                </div>
+                                <div class="p-3">
+                                    {% for record in patient_records %}
+                                    <div class="record-box p-3 bg-light rounded">
+                                        <div class="d-flex justify-content-between">
+                                            <h6>{{ record.record_type }}</h6>
+                                            <div class="text-muted small">{{ record.record_date|date:"M d, Y" }}</div>
+                                        </div>
+                                        <p class="mb-1">{{ record.description }}</p>
+                                        {% if record.doctor %}
+                                        <div class="small text-muted">Doctor: {{ record.doctor.name }}</div>
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <button class="btn btn-sm btn-outline-primary btn-edit-record" data-id="{{ record.id }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger ms-1 btn-delete-record" data-id="{{ record.id }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-clipboard fa-3x text-muted mb-3"></i>
+                                        <h6>No Medical Records</h6>
+                                        <p class="text-muted">This patient has no medical records yet</p>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="appointments">
+                                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                                    <h6 class="mb-0">Appointments</h6>
+                                    <a href="/api/healthcare/appointment/?patient_id={{ current_patient.id }}" class="btn btn-sm btn-success">
+                                        <i class="fas fa-plus me-1"></i>Schedule Appointment
+                                    </a>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Date & Time</th>
+                                                <th>Doctor</th>
+                                                <th>Type</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for appointment in patient_appointments %}
+                                            <tr>
+                                                <td>{{ appointment.appointment_date|date:"M d, Y" }} {{ appointment.appointment_time }}</td>
+                                                <td>Dr. {{ appointment.doctor.name }}</td>
+                                                <td>{{ appointment.get_appointment_type_display }}</td>
+                                                <td><span class="badge badge-{{ appointment.status }}">{{ appointment.get_status_display }}</span></td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary btn-edit-appointment" data-id="{{ appointment.id }}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger ms-1 btn-delete-appointment" data-id="{{ appointment.id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-3">No appointments found</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="prescriptions">
+                                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                                    <h6 class="mb-0">Prescriptions</h6>
+                                    <div>
+                                        <button class="btn btn-sm btn-info me-2" id="manageMedicationsBtn">
+                                            <i class="fas fa-pills me-1"></i>Manage Medications
+                                        </button>
+                                        <button class="btn btn-sm btn-info me-2" id="manageDrugSuppliersBtn">
+                                            <i class="fas fa-building me-1"></i>Manage Suppliers
+                                        </button>
+                                        <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addPrescriptionModal" data-patient-id="{{ current_patient.id }}">
+                                            <i class="fas fa-plus me-1"></i>Add Prescription
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Medication</th>
+                                                <th>Dosage</th>
+                                                <th>Status</th>
+                                                <th>Doctor</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for prescription in patient_prescriptions %}
+                                            <tr>
+                                                <td>{{ prescription.start_date|date:"M d, Y" }}</td>
+                                                <td>{{ prescription.medication.name }}</td>
+                                                <td>{{ prescription.dosage }} - {{ prescription.frequency }}</td>
+                                                <td>{{ prescription.status }}</td>
+                                                <td>Dr. {{ prescription.doctor.name }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary btn-edit-prescription" data-id="{{ prescription.id }}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger ms-1 btn-delete-prescription" data-id="{{ prescription.id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-3">No prescriptions found</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="tab-pane fade" id="lab">
+                                <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+                                    <h6 class="mb-0">Lab Results</h6>
+                                    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addLabResultModal" data-patient-id="{{ current_patient.id }}">
+                                        <i class="fas fa-plus me-1"></i>Add Lab Result
+                                    </button>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Test Name</th>
+                                                <th>Technician</th>
+                                                <th>Doctor</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for lab in patient_lab_results %}
+                                            <tr>
+                                                <td>{{ lab.test_date|date:"M d, Y" }}</td>
+                                                <td>{{ lab.test_name }}</td>
+                                                <td>{{ lab.technician.name }}</td>
+                                                <td>Dr. {{ lab.doctor.name }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-primary btn-edit-lab" data-id="{{ lab.id }}">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger ms-1 btn-delete-lab" data-id="{{ lab.id }}">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-info ms-1 btn-view-lab" data-id="{{ lab.id }}">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-3">No lab results found</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Record Modal -->
+    <div class="modal fade" id="addRecordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Medical Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="recordForm" action="{% url 'patient_record_create' %}" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="patient" id="recordPatientId" value="{{ current_patient.id|default:'' }}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Record Type</label>
+                                <select class="form-select" name="record_type" required>
+                                    <option value="Diagnosis">Diagnosis</option>
+                                    <option value="Procedure">Procedure</option>
+                                    <option value="Lab Result">Lab Result</option>
+                                    <option value="Treatment">Treatment</option>
+                                    <option value="Examination">Examination</option>
+                                    <option value="Referral">Referral</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Record Date</label>
+                                <input type="date" class="form-control" name="record_date" value="{{ today_date|date:'Y-m-d' }}" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Doctor</label>
+                            <select class="form-select" name="doctor" required>
+                                <option selected disabled value="">Select Doctor</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" name="description" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Attachments</label>
+                            <input type="file" class="form-control" name="attachments">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="recordForm" class="btn btn-primary">Save Record</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Record Modal -->
+    <div class="modal fade" id="editRecordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Medical Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editRecordForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="patient" id="editRecordPatientId">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Record Type</label>
+                                <select class="form-select" id="editRecordType" name="record_type" required>
+                                    <option value="Diagnosis">Diagnosis</option>
+                                    <option value="Procedure">Procedure</option>
+                                    <option value="Lab Result">Lab Result</option>
+                                    <option value="Treatment">Treatment</option>
+                                    <option value="Examination">Examination</option>
+                                    <option value="Referral">Referral</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Record Date</label>
+                                <input type="date" class="form-control" id="editRecordDate" name="record_date" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Doctor</label>
+                            <select class="form-select" id="editRecordDoctor" name="doctor" required>
+                                <option selected disabled value="">Select Doctor</option>
+                                {% for doctor in doctors %}
+                                <option value="{{ doctor.id }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" id="editRecordDescription" name="description" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Attachment (leave empty to keep current)</label>
+                            <input type="file" class="form-control" name="attachments">
+                        </div>
+                        <div id="currentAttachmentDiv" class="mb-3">
+                            <label class="form-label">Current Attachment</label>
+                            <div id="currentAttachment"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="editRecordForm" class="btn btn-primary">Update Record</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Record Confirmation Modal -->
+    <div class="modal fade" id="deleteRecordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this medical record? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteRecord">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Appointment Modal -->
+    <div class="modal fade" id="editAppointmentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Appointment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editAppointmentForm" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="patient" id="editAppointmentPatientId" value="{{ current_patient.id|default:'' }}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Doctor</label>
+                                <select class="form-select" id="editAppointmentDoctor" name="doctor" required>
+                                    <option selected disabled value="">Select Doctor</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">Dr. {{ doctor.name }} - {{ doctor.specialization }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Appointment Type</label>
+                                <select class="form-select" id="editAppointmentType" name="type" required>
+                                    <option value="consultation">Consultation</option>
+                                    <option value="follow_up">Follow-up</option>
+                                    <option value="checkup">Routine Check-up</option>
+                                    <option value="emergency">Emergency</option>
+                                    <option value="procedure">Procedure</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" id="editAppointmentDate" name="date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Time</label>
+                                <input type="time" class="form-control" id="editAppointmentTime" name="time" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Duration (minutes)</label>
+                                <input type="number" class="form-control" id="editAppointmentDuration" name="duration" value="30" min="15" step="15" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="editAppointmentStatus" name="status">
+                                    <option value="scheduled">Scheduled</option>
+                                    <option value="completed">Completed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                    <option value="no_show">No Show</option>
+                                    <option value="rescheduled">Rescheduled</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" id="editAppointmentNotes" name="notes" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="editAppointmentForm" class="btn btn-primary">Update Appointment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Appointment Confirmation Modal -->
+    <div class="modal fade" id="deleteAppointmentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this appointment? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteAppointment">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Prescription Modal -->
+    <div class="modal fade" id="addPrescriptionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Prescription</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="prescriptionForm" action="/api/healthcare/prescriptions/" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="patient" id="prescriptionPatientId" value="{{ current_patient.id|default:'' }}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Medication</label>
+                                <select class="form-select" name="medication" required>
+                                    <option selected disabled value="">Select Medication</option>
+                                    {% for med in medications %}
+                                    <option value="{{ med.id }}">{{ med.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Doctor</label>
+                                <select class="form-select" name="doctor" required>
+                                    <option selected disabled value="">Select Doctor</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">Dr. {{ doctor.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Dosage</label>
+                                <input type="text" class="form-control" name="dosage" required placeholder="e.g., 500mg">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Frequency</label>
+                                <input type="text" class="form-control" name="frequency" required placeholder="e.g., Twice daily">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" name="start_date" value="{{ today_date|date:'Y-m-d' }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control" name="end_date">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Instructions</label>
+                            <textarea class="form-control" name="instructions" rows="3" required placeholder="Take with food"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="prescriptionForm" class="btn btn-primary">Save Prescription</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Prescription Modal -->
+    <div class="modal fade" id="editPrescriptionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Prescription</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editPrescriptionForm" method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="patient" id="editPrescriptionPatientId" value="{{ current_patient.id|default:'' }}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Medication</label>
+                                <select class="form-select" id="editPrescriptionMedication" name="medication" required>
+                                    <option selected disabled value="">Select Medication</option>
+                                    {% for med in medications %}
+                                    <option value="{{ med.id }}">{{ med.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Doctor</label>
+                                <select class="form-select" id="editPrescriptionDoctor" name="doctor" required>
+                                    <option selected disabled value="">Select Doctor</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">Dr. {{ doctor.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Dosage</label>
+                                <input type="text" class="form-control" id="editPrescriptionDosage" name="dosage" required placeholder="e.g., 500mg">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Frequency</label>
+                                <input type="text" class="form-control" id="editPrescriptionFrequency" name="frequency" required placeholder="e.g., Twice daily">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="editPrescriptionStartDate" name="start_date" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="editPrescriptionEndDate" name="end_date">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Instructions</label>
+                            <textarea class="form-control" id="editPrescriptionInstructions" name="instructions" rows="3" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="editPrescriptionForm" class="btn btn-primary">Update Prescription</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Prescription Confirmation Modal -->
+    <div class="modal fade" id="deletePrescriptionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this prescription? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeletePrescription">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Lab Result Modal -->
+    <div class="modal fade" id="addLabResultModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Lab Result</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="labResultForm" action="/api/healthcare/lab-results/" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="patient" id="labResultPatientId" value="{{ current_patient.id|default:'' }}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Test Name</label>
+                                <input type="text" class="form-control" name="test_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Test Date</label>
+                                <input type="date" class="form-control" name="test_date" value="{{ today_date|date:'Y-m-d' }}" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Doctor</label>
+                                <select class="form-select" name="doctor" required>
+                                    <option selected disabled value="">Select Doctor</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">Dr. {{ doctor.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Technician</label>
+                                <select class="form-select" name="technician" required>
+                                    <option selected disabled value="">Select Technician</option>
+                                    {% for tech in lab_technicians %}
+                                    <option value="{{ tech.id }}">{{ tech.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Results</label>
+                            <textarea class="form-control" name="results" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Attachments</label>
+                            <input type="file" class="form-control" name="attachments">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="labResultForm" class="btn btn-primary">Save Lab Result</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Lab Result Modal -->
+    <div class="modal fade" id="editLabResultModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Lab Result</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editLabResultForm" method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="patient" id="editLabResultPatientId" value="{{ current_patient.id|default:'' }}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Test Name</label>
+                                <input type="text" class="form-control" id="editLabResultTestName" name="test_name" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Test Date</label>
+                                <input type="date" class="form-control" id="editLabResultTestDate" name="test_date" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Doctor</label>
+                                <select class="form-select" id="editLabResultDoctor" name="doctor" required>
+                                    <option selected disabled value="">Select Doctor</option>
+                                    {% for doctor in doctors %}
+                                    <option value="{{ doctor.id }}">Dr. {{ doctor.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Technician</label>
+                                <select class="form-select" id="editLabResultTechnician" name="technician" required>
+                                    <option selected disabled value="">Select Technician</option>
+                                    {% for tech in lab_technicians %}
+                                    <option value="{{ tech.id }}">{{ tech.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Results</label>
+                            <textarea class="form-control" id="editLabResultResults" name="results" rows="4" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Attachment (leave empty to keep current)</label>
+                            <input type="file" class="form-control" name="attachments">
+                        </div>
+                        <div id="currentLabAttachmentDiv" class="mb-3">
+                            <label class="form-label">Current Attachment</label>
+                            <div id="currentLabAttachment"></div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" form="editLabResultForm" class="btn btn-primary">Update Lab Result</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Lab Result Confirmation Modal -->
+    <div class="modal fade" id="deleteLabResultModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this lab result? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteLabResult">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include medications CRUD modals -->
+    {% include "healthcare/medications_crud.html" %}
+    {% include "healthcare/drug_suppliers_crud.html" %}
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Patient search functionality
+            $("#patientSearchButton").click(function() {
+                const query = $("#patientSearchQuery").val();
+                location.href = `/api/healthcare/patient-records/?search=${query}`;
+            });
+            
+            // Patient filter functionality
+            $("#patientFilterSelect").change(function() {
+                const filter = $(this).val();
+                location.href = `/api/healthcare/patient-records/?filter=${filter}`;
+            });
+            
+            // Patient selection from list
+            $("#recentPatientsList li").click(function() {
+                const patientId = $(this).data('patient-id');
+                location.href = `/api/healthcare/patient-records/?patient_id=${patientId}`;
+            });
+            
+            // Edit patient button
+            $("#editPatientButton").click(function() {
+                const patientId = $(this).data('id');
+                location.href = `/api/healthcare/patients/${patientId}/update/`;
+            });
+            
+            // Print patient info
+            $("#printPatientButton").click(function() {
+                window.print();
+            });
+            
+            // Add Record Modal - Set patient ID when opening
+            $("#addRecordModal").on("show.bs.modal", function(event) {
+                const button = $(event.relatedTarget);
+                const patientId = button.data('patient-id');
+                $("#recordPatientId").val(patientId);
+            });
+            
+            // Record form submission
+            $("#recordForm").submit(function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if(response.success) {
+                            alert(response.message);
+                            $('#addRecordModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Edit Record Button
+            $(".btn-edit-record").click(function() {
+                const recordId = $(this).data('id');
+                
+                // Fetch record data
+                $.ajax({
+                    url: `/api/healthcare/patient-records/${recordId}/`,
+                    type: 'GET',
+                    success: function(data) {
+                        $("#editRecordForm").attr('action', `/api/healthcare/patient-record/update/${recordId}/`);
+                        $("#editRecordPatientId").val(data.patient);
+                        $("#editRecordType").val(data.record_type);
+                        $("#editRecordDate").val(data.record_date);
+                        $("#editRecordDoctor").val(data.doctor);
+                        $("#editRecordDescription").val(data.description);
+                        
+                        // Handle attachment display
+                        if(data.attachments) {
+                            $("#currentAttachmentDiv").show();
+                            $("#currentAttachment").html(`<a href="${data.attachments}" target="_blank">View Current Attachment</a>`);
+                        } else {
+                            $("#currentAttachmentDiv").hide();
+                        }
+                        
+                        $("#editRecordModal").modal('show');
+                    },
+                    error: function() {
+                        alert('Error loading record data.');
+                    }
+                });
+            });
+            
+            // Edit Record form submission
+            $("#editRecordForm").submit(function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if(response.success) {
+                            alert(response.message);
+                            $('#editRecordModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Delete Record button
+            $(".btn-delete-record").click(function() {
+                const recordId = $(this).data('id');
+                $("#confirmDeleteRecord").data('id', recordId);
+                $("#deleteRecordModal").modal('show');
+            });
+            
+            // Confirm Delete Record
+            $("#confirmDeleteRecord").click(function() {
+                const recordId = $(this).data('id');
+                
+                $.ajax({
+                    url: `/api/healthcare/patient-record/delete/${recordId}/`,
+                    type: 'POST',
+                    data: {
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        if(response.success) {
+                            alert(response.message);
+                            $('#deleteRecordModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Appointment editing functionality
+            $(".btn-edit-appointment").click(function() {
+                const appointmentId = $(this).data('id');
+                
+                // Fetch appointment data
+                $.ajax({
+                    url: `/api/healthcare/appointments/${appointmentId}/`,
+                    type: 'GET',
+                    success: function(data) {
+                        $("#editAppointmentForm").attr('action', `/api/healthcare/appointment/update/${appointmentId}/`);
+                        $("#editAppointmentPatientId").val(data.patient);
+                        $("#editAppointmentDoctor").val(data.doctor);
+                        $("#editAppointmentType").val(data.appointment_type);
+                        $("#editAppointmentDate").val(data.appointment_date);
+                        $("#editAppointmentTime").val(data.appointment_time);
+                        $("#editAppointmentDuration").val(data.duration);
+                        $("#editAppointmentStatus").val(data.status);
+                        $("#editAppointmentNotes").val(data.notes);
+                        
+                        $("#editAppointmentModal").modal('show');
+                    },
+                    error: function() {
+                        alert('Error loading appointment data.');
+                    }
+                });
+            });
+            
+            // Edit Appointment form submission
+            $("#editAppointmentForm").submit(function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if(response.success) {
+                            alert(response.message);
+                            $('#editAppointmentModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Delete Appointment button
+            $(".btn-delete-appointment").click(function() {
+                const appointmentId = $(this).data('id');
+                $("#confirmDeleteAppointment").data('id', appointmentId);
+                $("#deleteAppointmentModal").modal('show');
+            });
+            
+            // Confirm Delete Appointment
+            $("#confirmDeleteAppointment").click(function() {
+                const appointmentId = $(this).data('id');
+                
+                $.ajax({
+                    url: `/api/healthcare/appointment/delete/${appointmentId}/`,
+                    type: 'POST',
+                    data: {
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        if(response.success) {
+                            alert(response.message);
+                            $('#deleteAppointmentModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Prescription Modals
+            $("#addPrescriptionModal").on("show.bs.modal", function(event) {
+                const button = $(event.relatedTarget);
+                const patientId = button.data('patient-id');
+                $("#prescriptionPatientId").val(patientId);
+            });
+            
+            // Prescription form submission
+            $("#prescriptionForm").submit(function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if(response.success || response.id) { // Check for success or created object ID
+                            alert('Prescription added successfully!');
+                            $('#addPrescriptionModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (response.message || 'Failed to add prescription'));
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Edit Prescription button
+            $(".btn-edit-prescription").click(function() {
+                const prescriptionId = $(this).data('id');
+                
+                // Fetch prescription data
+                $.ajax({
+                    url: `/api/healthcare/prescriptions/${prescriptionId}/`,
+                    type: 'GET',
+                    success: function(data) {
+                        $("#editPrescriptionForm").attr('action', `/api/healthcare/prescriptions/${prescriptionId}/`);
+                        $("#editPrescriptionPatientId").val(data.patient);
+                        $("#editPrescriptionMedication").val(data.medication);
+                        $("#editPrescriptionDoctor").val(data.doctor);
+                        $("#editPrescriptionDosage").val(data.dosage);
+                        $("#editPrescriptionFrequency").val(data.frequency);
+                        $("#editPrescriptionStartDate").val(data.start_date);
+                        $("#editPrescriptionEndDate").val(data.end_date);
+                        $("#editPrescriptionInstructions").val(data.instructions);
+                        
+                        $("#editPrescriptionModal").modal('show');
+                    },
+                    error: function() {
+                        alert('Error loading prescription data.');
+                    }
+                });
+            });
+            
+            // Edit Prescription form submission
+            $("#editPrescriptionForm").submit(function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const url = $(this).attr('action');
+                
+                $.ajax({
+                    url: url,
+                    type: 'PUT', // REST API standard for updates
+                    data: JSON.stringify(Object.fromEntries(formData)),
+                    contentType: 'application/json',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+                    },
+                    success: function(response) {
+                        alert('Prescription updated successfully!');
+                        $('#editPrescriptionModal').modal('hide');
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Delete Prescription button
+            $(".btn-delete-prescription").click(function() {
+                const prescriptionId = $(this).data('id');
+                $("#confirmDeletePrescription").data('id', prescriptionId);
+                $("#deletePrescriptionModal").modal('show');
+            });
+            
+            // Confirm Delete Prescription
+            $("#confirmDeletePrescription").click(function() {
+                const prescriptionId = $(this).data('id');
+                
+                $.ajax({
+                    url: `/api/healthcare/prescriptions/${prescriptionId}/`,
+                    type: 'DELETE',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+                    },
+                    success: function() {
+                        alert('Prescription deleted successfully!');
+                        $('#deletePrescriptionModal').modal('hide');
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Lab Result Modals
+            $("#addLabResultModal").on("show.bs.modal", function(event) {
+                const button = $(event.relatedTarget);
+                const patientId = button.data('patient-id');
+                $("#labResultPatientId").val(patientId);
+            });
+            
+            // Lab Result form submission
+            $("#labResultForm").submit(function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                
+                $.ajax({
+                    url: $(this).attr('action'),
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    success: function(response) {
+                        if(response.success || response.id) { // Check for success or created object ID
+                            alert('Lab result added successfully!');
+                            $('#addLabResultModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + (response.message || 'Failed to add lab result'));
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Edit Lab Result button
+            $(".btn-edit-lab").click(function() {
+                const labResultId = $(this).data('id');
+                
+                // Fetch lab result data
+                $.ajax({
+                    url: `/api/healthcare/lab-results/${labResultId}/`,
+                    type: 'GET',
+                    success: function(data) {
+                        $("#editLabResultForm").attr('action', `/api/healthcare/lab-results/${labResultId}/`);
+                        $("#editLabResultPatientId").val(data.patient);
+                        $("#editLabResultTestName").val(data.test_name);
+                        $("#editLabResultTestDate").val(data.test_date);
+                        $("#editLabResultDoctor").val(data.doctor);
+                        $("#editLabResultTechnician").val(data.technician);
+                        $("#editLabResultResults").val(data.results);
+                        
+                        // Handle attachment display
+                        if(data.attachments) {
+                            $("#currentLabAttachmentDiv").show();
+                            $("#currentLabAttachment").html(`<a href="${data.attachments}" target="_blank">View Current Attachment</a>`);
+                        } else {
+                            $("#currentLabAttachmentDiv").hide();
+                        }
+                        
+                        $("#editLabResultModal").modal('show');
+                    },
+                    error: function() {
+                        alert('Error loading lab result data.');
+                    }
+                });
+            });
+            
+            // Edit Lab Result form submission
+            $("#editLabResultForm").submit(function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const url = $(this).attr('action');
+                
+                $.ajax({
+                    url: url,
+                    type: 'PUT', // REST API standard for updates
+                    data: formData,
+                    contentType: false,
+                    processData: false,
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+                    },
+                    success: function() {
+                        alert('Lab result updated successfully!');
+                        $('#editLabResultModal').modal('hide');
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // Delete Lab Result button
+            $(".btn-delete-lab").click(function() {
+                const labResultId = $(this).data('id');
+                $("#confirmDeleteLabResult").data('id', labResultId);
+                $("#deleteLabResultModal").modal('show');
+            });
+            
+            // Confirm Delete Lab Result
+            $("#confirmDeleteLabResult").click(function() {
+                const labResultId = $(this).data('id');
+                
+                $.ajax({
+                    url: `/api/healthcare/lab-results/${labResultId}/`,
+                    type: 'DELETE',
+                    beforeSend: function(xhr) {
+                        xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+                    },
+                    success: function() {
+                        alert('Lab result deleted successfully!');
+                        $('#deleteLabResultModal').modal('hide');
+                        location.reload();
+                    },
+                    error: function(xhr) {
+                        alert('Error occurred. Please try again.');
+                    }
+                });
+            });
+            
+            // View Lab Result button
+            $(".btn-view-lab").click(function() {
+                const labResultId = $(this).data('id');
+                
+                // Fetch lab result data for viewing
+                $.ajax({
+                    url: `/api/healthcare/lab-results/${labResultId}/`,
+                    type: 'GET',
+                    success: function(data) {
+                        // Open in edit modal but disable fields for view only
+                        $("#editLabResultForm").attr('action', `#`); // No action needed for viewing
+                        $("#editLabResultPatientId").val(data.patient).prop('disabled', true);
+                        $("#editLabResultTestName").val(data.test_name).prop('disabled', true);
+                        $("#editLabResultTestDate").val(data.test_date).prop('disabled', true);
+                        $("#editLabResultDoctor").val(data.doctor).prop('disabled', true);
+                        $("#editLabResultTechnician").val(data.technician).prop('disabled', true);
+                        $("#editLabResultResults").val(data.results).prop('disabled', true);
+                        
+                        // Hide file upload but show current attachment
+                        $("input[name='attachments']").hide();
+                        $("input[name='attachments']").prev('label').hide();
+                        
+                        if(data.attachments) {
+                            $("#currentLabAttachmentDiv").show();
+                            $("#currentLabAttachment").html(`<a href="${data.attachments}" target="_blank">View Attachment</a>`);
+                        } else {
+                            $("#currentLabAttachmentDiv").hide();
+                        }
+                        
+                        // Change modal title and hide submit button
+                        $("#editLabResultModal .modal-title").text("View Lab Result");
+                        $("#editLabResultForm").find("button[type='submit']").hide();
+                        
+                        $("#editLabResultModal").modal('show');
+                    },
+                    error: function() {
+                        alert('Error loading lab result data.');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
